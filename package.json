@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "run": "ts-node --esm ./src/index.ts"
+    "debug": "ts-node --esm ./test/index.ts"
   },
   "type": "module",
   "author": "Ross Smith",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^18.14.0",
+    "@types/node": "^18.15.11",
     "amazon-user-pool-srp-client": "^1.0.4",
     "axios": "^1.3.3",
     "https": "^1.0.0",

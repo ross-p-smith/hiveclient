@@ -1,4 +1,4 @@
 node_modules
-.vscode
 out
-src/responses
+.env
+test/responses

@@ -1,4 +1,4 @@
-import beekeeperService from "./services/beekeeper.js";
+import beekeeperService from "../src/services/beekeeper.js";
 
 const serverUrl = process.env.SERVER!;
 
