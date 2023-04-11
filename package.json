@@ -1,6 +1,6 @@
 {
   "name": "hiveclient",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Client to communicate with British Gas Hive API",
   "main": "dist/src/services/beekeeper.js",
   "types": "dist/src/services/beekeeper.d.ts",

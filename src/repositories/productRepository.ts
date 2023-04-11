@@ -42,12 +42,9 @@ export class ProductRepository implements IRepository<Product> {
         }
     }
 
-    // async getAll(idToken: string, id: string): Promise<Result<Product[]>> {
-    // }
-
     async getAll(): Promise<Result<Product[]>> {
         try {
-            const authenticationResult = await this.authenticationService.login(process.env.USERNAME!, process.env.PASSWORD!);
+            const authenticationResult = await this.authenticationService.login(process.env.HIVE_USERNAME!, process.env.HIVE_PASSWORD!);
 
             const { data, status } = await axios.get<Product[]>(`${serverUrl}/products`, { 
                 headers: {
