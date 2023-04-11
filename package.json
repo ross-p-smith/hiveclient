@@ -2,11 +2,18 @@
   "name": "hiveclient",
   "version": "1.0.0",
   "description": "Client to communicate with British Gas Hive API",
-  "main": "index.js",
+  "main": "dist/src/services/beekeeper.js",
+  "types": "dist/src/services/beekeeper.d.ts",
+  "files": [
+    "dist/src"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "debug": "ts-node --esm ./test/index.ts"
-  },
+    "e2e-test": "ts-node --esm ./test/index.ts",
+    "build": "tsc",
+    "prepare": "npm run build",
+    "prepublish": "tsc"
+  }, 
   "type": "module",
   "author": "Ross Smith",
   "license": "ISC",

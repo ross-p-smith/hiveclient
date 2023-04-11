@@ -1,24 +1,11 @@
-import beekeeperService from "../src/services/beekeeper.js";
+//import beekeeperService from "../src/services/beekeeper.js";
 
-const serverUrl = process.env.SERVER!;
-
-interface HiveProps {
-    devicesUrl: string;
-    productsUrl: string;
-  }
+import beekeeperService from "../dist/src/services/beekeeper.js";
 
 class HiveClient {
-
-    private static readonly hiveProps: HiveProps = {
-        devicesUrl: `${serverUrl}/app/ingest`,
-        productsUrl: `${serverUrl}/app/csv/ingest`,
-      };
     
     public static async start() {
         console.log('Hive Client');
-
-        // const hiveLogin = new hiveSRPclient();
-        // const authenticationResult = await hiveLogin.login(process.env.USERNAME!, process.env.PASSWORD!);
 
         const trvs = await beekeeperService.getTRVs();
         console.table(trvs.content);
