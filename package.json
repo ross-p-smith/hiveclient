@@ -1,6 +1,6 @@
 {
   "name": "hiveclient",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Client to communicate with British Gas Hive API",
   "main": "dist/src/services/beekeeper.js",
   "types": "dist/src/services/beekeeper.d.ts",
@@ -13,10 +13,16 @@
     "build": "tsc",
     "prepare": "npm run build",
     "prepublish": "tsc"
-  }, 
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ross-p-smith/hiveclient.git"},
   "type": "module",
   "author": "Ross Smith",
-  "license": "ISC",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ross-p-smith/hiveclient/issues"},
+  "homepage": "https://github.com/ross-p-smith/hiveclient#readme",
   "devDependencies": {
     "@types/node": "^18.15.11",
     "amazon-user-pool-srp-client": "^1.0.4",
