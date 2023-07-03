@@ -1,6 +1,6 @@
-//import beekeeperService from "../src/services/beekeeper.js";
+import beekeeperService from "../src/services/beekeeper.js";
 
-import beekeeperService from "../dist/src/services/beekeeper.js";
+//import beekeeperService from "../dist/src/services/beekeeper.js";
 
 class HiveClient {
     

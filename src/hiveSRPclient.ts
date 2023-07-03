@@ -12,6 +12,7 @@ export type AuthenticationResult = {
 
 export interface IAuthenticationService {
     login(email: string, password: string) : Promise<AuthenticationResult>;
+    loginWithMFA(email: string, password: string) : Promise<AuthenticationResult>;
 }
     
 export class hiveSRPclient implements IAuthenticationService {
@@ -40,6 +41,54 @@ export class hiveSRPclient implements IAuthenticationService {
         return Promise.reject(err)
         })
     }
+
+    public async loginWithMFA(email: string, password: string) : Promise<AuthenticationResult> {
+        const userPoolId = this.CognitoUserPoolUsers.split('_')[1]
+        const srp = new SRPClient(userPoolId)
+        const SRP_A = srp.calculateA()
+        
+        const result = this.call(`AWSCognitoIdentityProviderService.InitiateAuth`, {
+        ClientId: this.CognitoUserPoolClientWeb,
+        AuthFlow: 'USER_SRP_AUTH',
+        AuthParameters: {
+            USERNAME: email,
+            SRP_A
+        }
+        })
+        .then(({ ChallengeName, ChallengeParameters, Session }) => {
+        const hkdf = srp.getPasswordAuthenticationKey(ChallengeParameters.USER_ID_FOR_SRP, password, ChallengeParameters.SRP_B, ChallengeParameters.SALT)
+        const dateNow = getNowString()
+        const signatureString = calculateSignature(hkdf, userPoolId, ChallengeParameters.USER_ID_FOR_SRP, ChallengeParameters.SECRET_BLOCK, dateNow)
+        return this.call('AWSCognitoIdentityProviderService.RespondToAuthChallenge', {
+            ClientId: this.CognitoUserPoolClientWeb,
+            ChallengeName,
+            ChallengeResponses: {
+                PASSWORD_CLAIM_SIGNATURE: signatureString,
+                PASSWORD_CLAIM_SECRET_BLOCK: ChallengeParameters.SECRET_BLOCK,
+                TIMESTAMP: dateNow,
+                USERNAME: ChallengeParameters.USER_ID_FOR_SRP
+            },
+            Session
+        })
+            .then(({ ChallengeName, ChallengeParameters, Session }) => {
+                const code = '123456';
+                return this.call('AWSCognitoIdentityProviderService.RespondToAuthChallenge', {
+                    ClientId: this.CognitoUserPoolClientWeb,
+                    ChallengeName: 'SMS_MFA',
+                    ChallengeResponses: {
+                        USERNAME: email,
+                        SMS_MFA_CODE: code
+                    },
+                    Session
+                })
+                .then(({ AuthenticationResult }) => {
+                    return AuthenticationResult;
+                    })
+            })
+        })
+
+        return result;
+    }  
 
     public async login(email: string, password: string) : Promise<AuthenticationResult> {
         const userPoolId = this.CognitoUserPoolUsers.split('_')[1]

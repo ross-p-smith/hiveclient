@@ -47,4 +47,11 @@ export class ThermostaticRadiatorValve implements thermostaticRadiatorValveProps
         );
         return Result.Succeeded(trv);
     }
+
+    public static boost(): Result<ThermostaticRadiatorValve> {
+        return Result.Failed({
+            errorMessage: "Error: boost not implemented.",
+            errorType: "NotImplemented",
+        });
+    }
 }
