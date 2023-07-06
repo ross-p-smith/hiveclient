@@ -8,6 +8,13 @@ export type AuthenticationResult = {
     RefreshToken: string,
     AccessToken: string
 }
+
+type AuthenticationConfiguration = {
+    ChallengeName: string,
+    ChallengeParameters: any,
+    Session: any
+}
+
 //https://github.com/borisirota/amazon-user-pool-srp-client
 
 export interface IAuthenticationService {
@@ -16,9 +23,12 @@ export interface IAuthenticationService {
 }
     
 export class hiveSRPclient implements IAuthenticationService {
+    CognitoUserPoolId: string = "SamNfoWtf";
     CognitoUserPoolUsers: string = "eu-west-1_SamNfoWtf";
     CognitoUserPoolClientWeb: string = "3rl4i0ajrmtdm8sbre54p9dvd9";
     CognitoIDP: string = "https://cognito-idp.eu-west-1.amazonaws.com";
+    AuthenticationResult: AuthenticationResult = {
+    } as AuthenticationResult;
 
     private async call(action: string, body: object) {
         const request = {
@@ -42,53 +52,91 @@ export class hiveSRPclient implements IAuthenticationService {
         })
     }
 
-    public async loginWithMFA(email: string, password: string) : Promise<AuthenticationResult> {
-        const userPoolId = this.CognitoUserPoolUsers.split('_')[1]
-        const srp = new SRPClient(userPoolId)
+    private async initateAuth(srp: SRPClient, email: string) {
         const SRP_A = srp.calculateA()
         
-        const result = this.call(`AWSCognitoIdentityProviderService.InitiateAuth`, {
-        ClientId: this.CognitoUserPoolClientWeb,
-        AuthFlow: 'USER_SRP_AUTH',
-        AuthParameters: {
-            USERNAME: email,
-            SRP_A
-        }
+        return this.call(`AWSCognitoIdentityProviderService.InitiateAuth`, {
+            ClientId: this.CognitoUserPoolClientWeb,
+            AuthFlow: 'USER_SRP_AUTH',
+            AuthParameters: {
+                USERNAME: email,
+                SRP_A
+            }
         })
-        .then(({ ChallengeName, ChallengeParameters, Session }) => {
-        const hkdf = srp.getPasswordAuthenticationKey(ChallengeParameters.USER_ID_FOR_SRP, password, ChallengeParameters.SRP_B, ChallengeParameters.SALT)
+    }
+
+    private async VerifyPassword(srp: SRPClient, password: string, authConfig: AuthenticationConfiguration) {
+        const hkdf = srp.getPasswordAuthenticationKey(
+            authConfig.ChallengeParameters.USER_ID_FOR_SRP,
+            password,
+            authConfig.ChallengeParameters.SRP_B,
+            authConfig.ChallengeParameters.SALT)
         const dateNow = getNowString()
-        const signatureString = calculateSignature(hkdf, userPoolId, ChallengeParameters.USER_ID_FOR_SRP, ChallengeParameters.SECRET_BLOCK, dateNow)
+        const signatureString = calculateSignature(hkdf,
+            this.CognitoUserPoolId,
+            authConfig.ChallengeParameters.USER_ID_FOR_SRP,
+            authConfig.ChallengeParameters.SECRET_BLOCK,
+            dateNow)
+
         return this.call('AWSCognitoIdentityProviderService.RespondToAuthChallenge', {
             ClientId: this.CognitoUserPoolClientWeb,
-            ChallengeName,
+            ChallengeName: authConfig.ChallengeName,
             ChallengeResponses: {
                 PASSWORD_CLAIM_SIGNATURE: signatureString,
-                PASSWORD_CLAIM_SECRET_BLOCK: ChallengeParameters.SECRET_BLOCK,
+                PASSWORD_CLAIM_SECRET_BLOCK: authConfig.ChallengeParameters.SECRET_BLOCK,
                 TIMESTAMP: dateNow,
-                USERNAME: ChallengeParameters.USER_ID_FOR_SRP
+                USERNAME: authConfig.ChallengeParameters.USER_ID_FOR_SRP
+            },
+            Session: authConfig.Session
+        })
+    }
+
+    private async CheckMFACode(srp: SRPClient, email: string, Session: any) {
+        const code = '123456';
+        return this.call('AWSCognitoIdentityProviderService.RespondToAuthChallenge', {
+            ClientId: this.CognitoUserPoolClientWeb,
+            ChallengeName: 'SMS_MFA',
+            ChallengeResponses: {
+                USERNAME: email,
+                SMS_MFA_CODE: code
             },
             Session
         })
-            .then(({ ChallengeName, ChallengeParameters, Session }) => {
-                const code = '123456';
-                return this.call('AWSCognitoIdentityProviderService.RespondToAuthChallenge', {
-                    ClientId: this.CognitoUserPoolClientWeb,
-                    ChallengeName: 'SMS_MFA',
-                    ChallengeResponses: {
-                        USERNAME: email,
-                        SMS_MFA_CODE: code
-                    },
-                    Session
-                })
-                .then(({ AuthenticationResult }) => {
-                    return AuthenticationResult;
-                    })
-            })
-        })
+    }
 
-        return result;
-    }  
+    public async loginWithMFA(email: string, password: string) : Promise<AuthenticationResult> {
+        
+        if (this.AuthenticationResult.IdToken != null) {
+            return this.AuthenticationResult;
+        }
+
+        const srp = new SRPClient(this.CognitoUserPoolId)
+
+        return this.initateAuth(srp, email)
+            .then(({ ChallengeName, ChallengeParameters, Session }) => {
+
+                const authConfig: AuthenticationConfiguration = {
+                    ChallengeName,
+                    ChallengeParameters,
+                    Session
+                }
+
+                if (ChallengeName === 'PASSWORD_VERIFIER') {
+                    return this.VerifyPassword(srp, password, authConfig)
+                        .then(({ ChallengeName, ChallengeParameters, Session }) => {
+
+                            return this.CheckMFACode(srp, email, Session)
+                                .then(({ AuthenticationResult }) => {
+                                    this.AuthenticationResult = AuthenticationResult;
+                                    return AuthenticationResult;
+                                })
+    
+                        })
+                }
+
+                return null;
+            })
+    }
 
     public async login(email: string, password: string) : Promise<AuthenticationResult> {
         const userPoolId = this.CognitoUserPoolUsers.split('_')[1]
