@@ -16,18 +16,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ross-p-smith/hiveclient.git"},
+    "url": "git+https://github.com/ross-p-smith/hiveclient.git"
+  },
   "type": "module",
   "author": "Ross Smith",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ross-p-smith/hiveclient/issues"},
+    "url": "https://github.com/ross-p-smith/hiveclient/issues"
+  },
   "homepage": "https://github.com/ross-p-smith/hiveclient#readme",
   "devDependencies": {
     "@types/node": "^18.15.11",
     "amazon-user-pool-srp-client": "^1.0.4",
     "axios": "^1.3.3",
     "https": "^1.0.0",
-    "ts-node": "^10.9.1"
+    "ts-node": "^10.9.1",
+    "readline": "^1.3.0"
   }
 }

@@ -2,6 +2,7 @@ import axios from 'axios';
 
 /// <reference path="amazon-user-pool-srp-client.d.ts" />
 import { SRPClient, calculateSignature, getNowString } from 'amazon-user-pool-srp-client';
+import { getMFACode } from './utils/question.js';
 
 export type AuthenticationResult = {
     IdToken: string,
@@ -27,8 +28,8 @@ export class hiveSRPclient implements IAuthenticationService {
     CognitoUserPoolUsers: string = "eu-west-1_SamNfoWtf";
     CognitoUserPoolClientWeb: string = "3rl4i0ajrmtdm8sbre54p9dvd9";
     CognitoIDP: string = "https://cognito-idp.eu-west-1.amazonaws.com";
-    AuthenticationResult: AuthenticationResult = {
-    } as AuthenticationResult;
+    AuthenticationResult: AuthenticationResult = {} as AuthenticationResult;
+    SRPClient: SRPClient = new SRPClient(this.CognitoUserPoolId);
 
     private async call(action: string, body: object) {
         const request = {
@@ -52,8 +53,8 @@ export class hiveSRPclient implements IAuthenticationService {
         })
     }
 
-    private async initateAuth(srp: SRPClient, email: string) {
-        const SRP_A = srp.calculateA()
+    private async initateAuth(email: string) {
+        const SRP_A = this.SRPClient.calculateA()
         
         return this.call(`AWSCognitoIdentityProviderService.InitiateAuth`, {
             ClientId: this.CognitoUserPoolClientWeb,
@@ -65,8 +66,8 @@ export class hiveSRPclient implements IAuthenticationService {
         })
     }
 
-    private async VerifyPassword(srp: SRPClient, password: string, authConfig: AuthenticationConfiguration) {
-        const hkdf = srp.getPasswordAuthenticationKey(
+    private async VerifyPassword(password: string, authConfig: AuthenticationConfiguration) {
+        const hkdf = this.SRPClient.getPasswordAuthenticationKey(
             authConfig.ChallengeParameters.USER_ID_FOR_SRP,
             password,
             authConfig.ChallengeParameters.SRP_B,
@@ -91,14 +92,18 @@ export class hiveSRPclient implements IAuthenticationService {
         })
     }
 
-    private async CheckMFACode(srp: SRPClient, email: string, Session: any) {
-        const code = '123456';
+    private async CheckMFACode(email: string, Session: any) {
+        let mfaCode = await getMFACode();
+        if (mfaCode == null)
+        {
+            throw new Error("Error: Unable to get MFA code");
+        }
         return this.call('AWSCognitoIdentityProviderService.RespondToAuthChallenge', {
             ClientId: this.CognitoUserPoolClientWeb,
             ChallengeName: 'SMS_MFA',
             ChallengeResponses: {
                 USERNAME: email,
-                SMS_MFA_CODE: code
+                SMS_MFA_CODE: mfaCode
             },
             Session
         })
@@ -110,9 +115,7 @@ export class hiveSRPclient implements IAuthenticationService {
             return this.AuthenticationResult;
         }
 
-        const srp = new SRPClient(this.CognitoUserPoolId)
-
-        return this.initateAuth(srp, email)
+        return this.initateAuth(email)
             .then(({ ChallengeName, ChallengeParameters, Session }) => {
 
                 const authConfig: AuthenticationConfiguration = {
@@ -122,10 +125,10 @@ export class hiveSRPclient implements IAuthenticationService {
                 }
 
                 if (ChallengeName === 'PASSWORD_VERIFIER') {
-                    return this.VerifyPassword(srp, password, authConfig)
+                    return this.VerifyPassword(password, authConfig)
                         .then(({ ChallengeName, ChallengeParameters, Session }) => {
 
-                            return this.CheckMFACode(srp, email, Session)
+                            return this.CheckMFACode(email, Session)
                                 .then(({ AuthenticationResult }) => {
                                     this.AuthenticationResult = AuthenticationResult;
                                     return AuthenticationResult;
